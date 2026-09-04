@@ -1,124 +1,124 @@
-# Roadmap: системный программист на Rust
+# Roadmap: Systems Programmer in Rust
 
-Маршрут: **База → Cloud/Infrastructure → ОС и виртуализация → Embedded**
+Path: **Foundations → Cloud/Infrastructure → OS & Virtualization → Embedded**
 
-Логика: этап 1 даёт первую работу, этап 2 — глубину и топовые команды, этап 3 — опциональное расширение с форой в 90% навыков.
+Logic: Stage 1 gets you your first job, Stage 2 gives you depth and access to top-tier teams, Stage 3 is an optional expansion you'll enter with a 90% head start.
 
 ---
 
-## Этап 0. База (2–4 мес)
+## Stage 0. Foundations (2–4 months)
 
-### Rust продвинутый
-- [ ] Lifetimes в сложных случаях, HRTB
+### Advanced Rust
+- [ ] Lifetimes in complex cases, HRTB
 - [ ] Smart pointers: `Box`, `Rc`, `Arc`, `RefCell`, `Cow`
-- [ ] Unsafe Rust: raw pointers, FFI, инварианты — *Rustonomicon*
-- [ ] Многопоточность: `Send`/`Sync`, atomics, memory ordering — *Rust Atomics and Locks* (Mara Bos, бесплатно онлайн)
-- [ ] Async вглубь: устройство Future, pin, executor — туториал tokio mini-redis
+- [ ] Unsafe Rust: raw pointers, FFI, invariants — *Rustonomicon*
+- [ ] Concurrency: `Send`/`Sync`, atomics, memory ordering — *Rust Atomics and Locks* (Mara Bos, free online)
+- [ ] Async in depth: how Future works, pin, executors — tokio mini-redis tutorial
 
-### C и низкий уровень
-- [ ] C: K&R или *Modern C* (1–2 мес)
-- [ ] Проект: свой malloc
-- [ ] Проект: простой shell
-- [ ] CS:APP — главы про память, линковку, ассемблер
-- [ ] Привычка: смотреть свой Rust-код в Godbolt (читать ассемблер, не писать)
+### C and low-level
+- [ ] C: K&R or *Modern C* (1–2 months)
+- [ ] Project: your own malloc
+- [ ] Project: a simple shell
+- [ ] CS:APP — chapters on memory, linking, assembly
+- [ ] Habit: inspect your Rust code in Godbolt (read assembly, don't write it)
 
-### ОС-основы
-- [ ] *OSTEP* (Operating Systems: Three Easy Pieces, бесплатно): процессы, потоки, syscalls, память
+### OS fundamentals
+- [ ] *OSTEP* (Operating Systems: Three Easy Pieces, free): processes, threads, syscalls, memory
 
-**Чекпоинт:** свободно читаю C, понимаю вывод Godbolt, написал многопоточную программу с atomics.
+**Checkpoint:** I read C fluently, understand Godbolt output, and have written a multithreaded program with atomics.
 
 ---
 
-## Этап 1. Cloud + Infrastructure (6–9 мес) → первая работа
+## Stage 1. Cloud + Infrastructure (6–9 months) → first job
 
-### Сети (2–3 мес)
-- [ ] TCP/UDP, сокеты — *Beej's Guide to Network Programming*
+### Networking (2–3 months)
+- [ ] TCP/UDP, sockets — *Beej's Guide to Network Programming*
 - [ ] TLS, HTTP/1.1 → HTTP/2 → HTTP/3 (QUIC), DNS
-- [ ] epoll / io_uring — как tokio работает под капотом
-- [ ] Проект: HTTP-сервер на голых сокетах
-- [ ] Проект: reverse proxy (вдохновляться Pingora от Cloudflare)
+- [ ] epoll / io_uring — how tokio works under the hood
+- [ ] Project: HTTP server on raw sockets
+- [ ] Project: reverse proxy (take inspiration from Cloudflare's Pingora)
 
-### Linux (параллельно)
-- [ ] Namespaces, cgroups — фундамент контейнеров
-- [ ] strace, perf, основы eBPF (bpftrace)
-- [ ] Проект: мини-контейнер-рантайм на Rust
+### Linux (in parallel)
+- [ ] Namespaces, cgroups — the foundation of containers
+- [ ] strace, perf, eBPF basics (bpftrace)
+- [ ] Project: mini container runtime in Rust
 
-### Хранилища (2–3 мес)
-- [ ] LSM-деревья, B-деревья, WAL, MVCC
-- [ ] PingCAP Talent Plan (курс на Rust)
-- [ ] Проект: KV-хранилище с персистентностью
-- [ ] Читать: *DDIA* (2-е издание, ~глава в 1–2 недели)
-- [ ] Читать исходники: redb, sled
+### Storage (2–3 months)
+- [ ] LSM trees, B-trees, WAL, MVCC
+- [ ] PingCAP Talent Plan (Rust-based course)
+- [ ] Project: KV store with persistence
+- [ ] Read: *DDIA* (2nd edition, ~1 chapter per 1–2 weeks)
+- [ ] Read source code: redb, sled
 
-### Распределённые системы (2–3 мес)
-- [ ] MIT 6.824 (лекции бесплатны)
-- [ ] Raft — разобрать алгоритм
-- [ ] **Проект-визитка:** KV-хранилище с Raft-репликацией
+### Distributed systems (2–3 months)
+- [ ] MIT 6.824 (lectures are free)
+- [ ] Raft — understand the algorithm
+- [ ] **Showcase project:** KV store with Raft replication
 
-### Инструменты (по ходу)
-- [ ] Docker + Kubernetes (уверенное пользование + устройство)
+### Tooling (along the way)
+- [ ] Docker + Kubernetes (confident usage + internals)
 - [ ] gRPC, Protobuf
 - [ ] Prometheus, OpenTelemetry
 - [ ] flamegraph, tokio-console
-- [ ] Один облачный провайдер (AWS — самый частый в вакансиях)
+- [ ] One cloud provider (AWS is the most common in job postings)
 
-### Фоном
-- [ ] Купить RP2040 (~$5), мигать светодиодами с Embassy по выходным
+### In the background
+- [ ] Buy an RP2040 (~$5), blink LEDs with Embassy on weekends
 
-**Чекпоинт:** 2–3 проекта на GitHub, дочитан DDIA, откликаюсь на вакансии (джун/мидл в инфраструктуре).
+**Checkpoint:** 2–3 projects on GitHub, DDIA finished, applying to jobs (junior/mid in infrastructure).
 
 ---
 
-## Этап 2. ОС и виртуализация (год 2–3, параллельно работе)
+## Stage 2. OS & Virtualization (years 2–3, alongside work)
 
-### Своя ОС
-- [ ] Блог-серия *Writing an OS in Rust* (Philipp Oppermann) целиком
-- [ ] Планировщик задач (round-robin → приоритеты)
+### Your own OS
+- [ ] The *Writing an OS in Rust* blog series (Philipp Oppermann) in full
+- [ ] Task scheduler (round-robin → priorities)
 - [ ] Userspace: syscalls, ring 0 → ring 3
-- [ ] Простая файловая система (FAT32)
-- [ ] Драйвер (клавиатура, virtio или AHCI)
-- [ ] Читать xv6 (учебная ОС на C)
-- [ ] Справочник: OSDev Wiki
+- [ ] Simple filesystem (FAT32)
+- [ ] A driver (keyboard, virtio, or AHCI)
+- [ ] Read xv6 (teaching OS in C)
+- [ ] Reference: OSDev Wiki
 
-### Виртуализация (мост между работой и ОС)
-- [ ] KVM API: простейший гипервизор на Rust через /dev/kvm
-- [ ] virtio: как гость общается с хостом
-- [ ] Читать исходники: Firecracker, Cloud Hypervisor
+### Virtualization (the bridge between work and OS)
+- [ ] KVM API: a minimal hypervisor in Rust via /dev/kvm
+- [ ] virtio: how the guest talks to the host
+- [ ] Read source code: Firecracker, Cloud Hypervisor
 
-### eBPF вглубь
-- [ ] aya (Rust-фреймворк для eBPF)
+### eBPF in depth
+- [ ] aya (Rust framework for eBPF)
 
-**Чекпоинт:** своя мини-ОС с userspace, работающий toy-гипервизор, понимаю код Firecracker.
+**Checkpoint:** my own mini-OS with userspace, a working toy hypervisor, I understand Firecracker's code.
 
 ---
 
-## Этап 3. Embedded (год 3+, если интерес сохранится)
+## Stage 3. Embedded (year 3+, if the interest holds)
 
-- [ ] Железо: STM32 (Nucleo) или RP2040
+- [ ] Hardware: STM32 (Nucleo) or RP2040
 - [ ] *The Embedded Rust Book* + *Discovery Book*
-- [ ] Стек: PAC → HAL → BSP, трейты `embedded-hal`
-- [ ] Прерывания, таймеры, DMA
-- [ ] Протоколы с реальными датчиками: UART, SPI, I2C
-- [ ] Embassy (async) и RTIC (realtime)
-- [ ] Отладка: probe-rs, defmt, GDB через SWD
-- [ ] **Проект-визитка:** драйвер чипа как крейт на crates.io или USB-устройство (HID)
+- [ ] The stack: PAC → HAL → BSP, `embedded-hal` traits
+- [ ] Interrupts, timers, DMA
+- [ ] Protocols with real sensors: UART, SPI, I2C
+- [ ] Embassy (async) and RTIC (realtime)
+- [ ] Debugging: probe-rs, defmt, GDB over SWD
+- [ ] **Showcase project:** a chip driver published as a crate on crates.io, or a USB device (HID)
 
 ---
 
-## Сквозные привычки
+## Ongoing habits
 
-- [ ] Читать чужой код постоянно: tokio → TiKV → Firecracker → Embassy
-- [ ] Контрибуции в open source с этапа 1 (TiKV, Vector, Quickwit)
-- [ ] Вести заметки/блог о проектах
+- [ ] Read other people's code constantly: tokio → TiKV → Firecracker → Embassy
+- [ ] Contribute to open source starting from Stage 1 (TiKV, Vector, Quickwit)
+- [ ] Keep notes / a blog about your projects
 
-## Ключевые книги
+## Key books
 
-| Книга | Этап |
+| Book | Stage |
 |---|---|
 | Rustonomicon | 0 |
 | Rust Atomics and Locks | 0 |
 | CS:APP | 0 |
 | OSTEP | 0 |
 | Beej's Guide to Network Programming | 1 |
-| DDIA (2-е изд.) | 1 |
+| DDIA (2nd ed.) | 1 |
 | The Embedded Rust Book + Discovery | 3 |
