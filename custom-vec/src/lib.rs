@@ -1,6 +1,6 @@
-use std::alloc;
 use std::alloc::Layout;
 use std::ptr::NonNull;
+use std::{alloc, ptr};
 
 pub struct Vec<T> {
     ptr: NonNull<T>,
@@ -15,6 +15,27 @@ impl<T> Vec<T> {
             ptr: NonNull::dangling(),
             cap: 0,
             len: 0,
+        }
+    }
+
+    pub fn push(&mut self, value: T) {
+        if self.len == self.cap {
+            self.grow()
+        }
+
+        unsafe {
+            ptr::write(self.ptr.as_ptr().add(self.len), value);
+        }
+
+        self.len += 1;
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            None
+        } else {
+            self.len -= 1;
+            unsafe { Some(ptr::read(self.ptr.as_ptr().add(self.len))) }
         }
     }
 
