@@ -1,4 +1,5 @@
-use std::alloc::Layout;
+use std::alloc::{Layout, dealloc};
+use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 use std::{alloc, ptr};
@@ -96,6 +97,25 @@ impl<T> Vec<T> {
             result
         }
     }
+
+    pub fn into_iter(self) -> IntoIter<T> {
+        let vec = ManuallyDrop::new(self);
+
+        let ptr = vec.ptr;
+        let cap = vec.cap;
+        let len = vec.len;
+
+        IntoIter {
+            buf: ptr,
+            cap,
+            start: ptr.as_ptr(),
+            end: if cap == 0 {
+                ptr.as_ptr()
+            } else {
+                unsafe { ptr.as_ptr().add(len) }
+            },
+        }
+    }
 }
 
 impl<T> Drop for Vec<T> {
@@ -103,7 +123,7 @@ impl<T> Drop for Vec<T> {
         if self.cap != 0 {
             while let Some(_) = self.pop() {}
             let layout = Layout::array::<T>(self.cap).unwrap();
-            unsafe { alloc::dealloc(self.ptr.as_ptr() as *mut u8, layout) };
+            unsafe { dealloc(self.ptr.as_ptr() as *mut u8, layout) };
         }
     }
 }
@@ -124,3 +144,53 @@ impl<T> DerefMut for Vec<T> {
 
 unsafe impl<T: Send> Send for Vec<T> {}
 unsafe impl<T: Sync> Sync for Vec<T> {}
+
+pub struct IntoIter<T> {
+    buf: NonNull<T>,
+    cap: usize,
+    start: *const T,
+    end: *const T,
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        if self.start == self.end {
+            return None;
+        }
+
+        unsafe {
+            let result = ptr::read(self.start);
+            self.start = self.start.offset(1);
+            Some(result)
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = (self.end as usize - self.start as usize) / size_of::<T>();
+        (len, Some(len))
+    }
+}
+
+impl<T> DoubleEndedIterator for IntoIter<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.start == self.end {
+            return None;
+        }
+
+        unsafe {
+            self.end = self.end.offset(-1);
+            Some(ptr::read(self.end))
+        }
+    }
+}
+
+impl<T> Drop for IntoIter<T> {
+    fn drop(&mut self) {
+        if self.cap != 0 {
+            for _ in &mut *self {}
+            let layout = Layout::array::<T>(self.cap).unwrap();
+            unsafe { dealloc(self.buf.as_ptr() as *mut u8, layout) }
+        }
+    }
+}
