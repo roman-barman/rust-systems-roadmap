@@ -66,6 +66,36 @@ impl<T> Vec<T> {
         };
         self.cap = new_cap;
     }
+
+    pub fn insert(&mut self, index: usize, elem: T) {
+        assert!(index <= self.len, "index out of bounds");
+        if self.len == self.cap {
+            self.grow();
+        }
+        unsafe {
+            ptr::copy(
+                self.ptr.as_ptr().add(index),
+                self.ptr.as_ptr().add(index + 1),
+                self.len - index,
+            );
+            ptr::write(self.ptr.as_ptr().add(index), elem);
+        }
+        self.len += 1;
+    }
+
+    pub fn remove(&mut self, index: usize) -> T {
+        assert!(index < self.len, "index out of bounds");
+        unsafe {
+            self.len -= 1;
+            let result = ptr::read(self.ptr.as_ptr().add(index));
+            ptr::copy(
+                self.ptr.as_ptr().add(index + 1),
+                self.ptr.as_ptr().add(index),
+                self.len - index,
+            );
+            result
+        }
+    }
 }
 
 impl<T> Drop for Vec<T> {
