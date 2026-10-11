@@ -67,5 +67,15 @@ impl<T> Vec<T> {
     }
 }
 
+impl<T> Drop for Vec<T> {
+    fn drop(&mut self) {
+        if self.cap != 0 {
+            while let Some(_) = self.pop() {}
+            let layout = Layout::array::<T>(self.cap).unwrap();
+            unsafe { alloc::dealloc(self.ptr.as_ptr() as *mut u8, layout) };
+        }
+    }
+}
+
 unsafe impl<T: Send> Send for Vec<T> {}
 unsafe impl<T: Sync> Sync for Vec<T> {}
