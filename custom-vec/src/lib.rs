@@ -1,43 +1,22 @@
 use std::alloc::{Layout, dealloc};
-use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
-use std::{alloc, ptr};
+use std::{alloc, mem, ptr};
 
-pub struct Vec<T> {
+struct RawVec<T> {
     ptr: NonNull<T>,
     cap: usize,
-    len: usize,
 }
 
-impl<T> Vec<T> {
-    pub fn new() -> Self {
+unsafe impl<T> Send for RawVec<T> where T: Send {}
+unsafe impl<T> Sync for RawVec<T> where T: Sync {}
+
+impl<T> RawVec<T> {
+    fn new() -> Self {
         assert_ne!(size_of::<T>(), 0, "zero sized types are not supported");
-        Vec {
+        RawVec {
             ptr: NonNull::dangling(),
             cap: 0,
-            len: 0,
-        }
-    }
-
-    pub fn push(&mut self, value: T) {
-        if self.len == self.cap {
-            self.grow()
-        }
-
-        unsafe {
-            ptr::write(self.ptr.as_ptr().add(self.len), value);
-        }
-
-        self.len += 1;
-    }
-
-    pub fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
-            None
-        } else {
-            self.len -= 1;
-            unsafe { Some(ptr::read(self.ptr.as_ptr().add(self.len))) }
         }
     }
 
@@ -67,19 +46,71 @@ impl<T> Vec<T> {
         };
         self.cap = new_cap;
     }
+}
+
+impl<T> Drop for RawVec<T> {
+    fn drop(&mut self) {
+        if self.cap != 0 {
+            let layout = Layout::array::<T>(self.cap).unwrap();
+            unsafe { dealloc(self.ptr.as_ptr() as *mut u8, layout) }
+        }
+    }
+}
+
+pub struct Vec<T> {
+    buf: RawVec<T>,
+    len: usize,
+}
+
+impl<T> Vec<T> {
+    pub fn new() -> Self {
+        Vec {
+            buf: RawVec::new(),
+            len: 0,
+        }
+    }
+
+    fn ptr(&self) -> *mut T {
+        self.buf.ptr.as_ptr()
+    }
+
+    fn cap(&self) -> usize {
+        self.buf.cap
+    }
+
+    pub fn push(&mut self, value: T) {
+        if self.len == self.cap() {
+            self.buf.grow()
+        }
+
+        unsafe {
+            ptr::write(self.ptr().add(self.len), value);
+        }
+
+        self.len += 1;
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            None
+        } else {
+            self.len -= 1;
+            unsafe { Some(ptr::read(self.ptr().add(self.len))) }
+        }
+    }
 
     pub fn insert(&mut self, index: usize, elem: T) {
         assert!(index <= self.len, "index out of bounds");
-        if self.len == self.cap {
-            self.grow();
+        if self.len == self.cap() {
+            self.buf.grow();
         }
         unsafe {
             ptr::copy(
-                self.ptr.as_ptr().add(index),
-                self.ptr.as_ptr().add(index + 1),
+                self.ptr().add(index),
+                self.ptr().add(index + 1),
                 self.len - index,
             );
-            ptr::write(self.ptr.as_ptr().add(index), elem);
+            ptr::write(self.ptr().add(index), elem);
         }
         self.len += 1;
     }
@@ -88,43 +119,20 @@ impl<T> Vec<T> {
         assert!(index < self.len, "index out of bounds");
         unsafe {
             self.len -= 1;
-            let result = ptr::read(self.ptr.as_ptr().add(index));
+            let result = ptr::read(self.ptr().add(index));
             ptr::copy(
-                self.ptr.as_ptr().add(index + 1),
-                self.ptr.as_ptr().add(index),
+                self.ptr().add(index + 1),
+                self.ptr().add(index),
                 self.len - index,
             );
             result
-        }
-    }
-
-    pub fn into_iter(self) -> IntoIter<T> {
-        let vec = ManuallyDrop::new(self);
-
-        let ptr = vec.ptr;
-        let cap = vec.cap;
-        let len = vec.len;
-
-        IntoIter {
-            buf: ptr,
-            cap,
-            start: ptr.as_ptr(),
-            end: if cap == 0 {
-                ptr.as_ptr()
-            } else {
-                unsafe { ptr.as_ptr().add(len) }
-            },
         }
     }
 }
 
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
-        if self.cap != 0 {
-            while let Some(_) = self.pop() {}
-            let layout = Layout::array::<T>(self.cap).unwrap();
-            unsafe { dealloc(self.ptr.as_ptr() as *mut u8, layout) };
-        }
+        while let Some(_) = self.pop() {}
     }
 }
 
@@ -132,22 +140,41 @@ impl<T> Deref for Vec<T> {
     type Target = [T];
 
     fn deref(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
+        unsafe { std::slice::from_raw_parts(self.ptr(), self.len) }
     }
 }
 
 impl<T> DerefMut for Vec<T> {
     fn deref_mut(&mut self) -> &mut [T] {
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len) }
+        unsafe { std::slice::from_raw_parts_mut(self.ptr(), self.len) }
     }
 }
 
 unsafe impl<T: Send> Send for Vec<T> {}
 unsafe impl<T: Sync> Sync for Vec<T> {}
 
+impl<T> IntoIterator for Vec<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+    fn into_iter(self) -> IntoIter<T> {
+        let buf = unsafe { ptr::read(&self.buf) };
+        let len = self.len;
+        mem::forget(self);
+
+        IntoIter {
+            start: buf.ptr.as_ptr(),
+            end: if buf.cap == 0 {
+                buf.ptr.as_ptr()
+            } else {
+                unsafe { buf.ptr.as_ptr().add(len) }
+            },
+            _buf: buf,
+        }
+    }
+}
+
 pub struct IntoIter<T> {
-    buf: NonNull<T>,
-    cap: usize,
+    _buf: RawVec<T>,
     start: *const T,
     end: *const T,
 }
@@ -187,10 +214,6 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
-        if self.cap != 0 {
-            for _ in &mut *self {}
-            let layout = Layout::array::<T>(self.cap).unwrap();
-            unsafe { dealloc(self.buf.as_ptr() as *mut u8, layout) }
-        }
+        for _ in &mut *self {}
     }
 }
