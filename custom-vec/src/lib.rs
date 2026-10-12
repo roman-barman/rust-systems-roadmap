@@ -1,4 +1,5 @@
 use std::alloc::{Layout, dealloc};
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 use std::{alloc, mem, ptr};
@@ -128,6 +129,16 @@ impl<T> Vec<T> {
             result
         }
     }
+
+    pub fn drain(&mut self) -> Drain<T> {
+        let iter = unsafe { RawValIter::new(&self) };
+        self.len = 0;
+
+        Drain {
+            iter,
+            vec: PhantomData,
+        }
+    }
 }
 
 impl<T> Drop for Vec<T> {
@@ -157,29 +168,36 @@ impl<T> IntoIterator for Vec<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
     fn into_iter(self) -> IntoIter<T> {
-        let buf = unsafe { ptr::read(&self.buf) };
-        let len = self.len;
-        mem::forget(self);
+        unsafe {
+            let iter = RawValIter::new(&self);
 
-        IntoIter {
-            start: buf.ptr.as_ptr(),
-            end: if buf.cap == 0 {
-                buf.ptr.as_ptr()
-            } else {
-                unsafe { buf.ptr.as_ptr().add(len) }
-            },
-            _buf: buf,
+            let buf = ptr::read(&self.buf);
+            mem::forget(self);
+
+            IntoIter { iter, _buf: buf }
         }
     }
 }
 
-pub struct IntoIter<T> {
-    _buf: RawVec<T>,
+struct RawValIter<T> {
     start: *const T,
     end: *const T,
 }
 
-impl<T> Iterator for IntoIter<T> {
+impl<T> RawValIter<T> {
+    unsafe fn new(slice: &[T]) -> Self {
+        RawValIter {
+            start: slice.as_ptr(),
+            end: if slice.is_empty() {
+                slice.as_ptr()
+            } else {
+                unsafe { slice.as_ptr().add(slice.len()) }
+            },
+        }
+    }
+}
+
+impl<T> Iterator for RawValIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
         if self.start == self.end {
@@ -199,7 +217,7 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-impl<T> DoubleEndedIterator for IntoIter<T> {
+impl<T> DoubleEndedIterator for RawValIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start == self.end {
             return None;
@@ -209,6 +227,56 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
             self.end = self.end.offset(-1);
             Some(ptr::read(self.end))
         }
+    }
+}
+
+pub struct Drain<'a, T: 'a> {
+    iter: RawValIter<T>,
+    vec: PhantomData<&'a mut Vec<T>>,
+}
+
+impl<'a, T> Iterator for Drain<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
+    fn next_back(&mut self) -> Option<T> {
+        self.iter.next_back()
+    }
+}
+
+impl<'a, T> Drop for Drain<'a, T> {
+    fn drop(&mut self) {
+        for _ in &mut *self {}
+    }
+}
+
+pub struct IntoIter<T> {
+    _buf: RawVec<T>,
+    iter: RawValIter<T>,
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<T> DoubleEndedIterator for IntoIter<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back()
     }
 }
 
