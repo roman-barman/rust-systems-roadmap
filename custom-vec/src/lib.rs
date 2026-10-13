@@ -14,14 +14,20 @@ unsafe impl<T> Sync for RawVec<T> where T: Sync {}
 
 impl<T> RawVec<T> {
     fn new() -> Self {
-        assert_ne!(size_of::<T>(), 0, "zero sized types are not supported");
+        let cap = if mem::size_of::<T>() == 0 {
+            usize::MAX
+        } else {
+            0
+        };
         RawVec {
             ptr: NonNull::dangling(),
-            cap: 0,
+            cap,
         }
     }
 
     fn grow(&mut self) {
+        assert_ne!(size_of::<T>(), 0, "capacity overflow");
+
         let (new_cap, new_layout) = if self.cap == 0 {
             (1, Layout::array::<T>(1).unwrap())
         } else {
@@ -51,7 +57,9 @@ impl<T> RawVec<T> {
 
 impl<T> Drop for RawVec<T> {
     fn drop(&mut self) {
-        if self.cap != 0 {
+        let elem_size = size_of::<T>();
+
+        if self.cap != 0 && elem_size != 0 {
             let layout = Layout::array::<T>(self.cap).unwrap();
             unsafe { dealloc(self.ptr.as_ptr() as *mut u8, layout) }
         }
@@ -188,7 +196,9 @@ impl<T> RawValIter<T> {
     unsafe fn new(slice: &[T]) -> Self {
         RawValIter {
             start: slice.as_ptr(),
-            end: if slice.is_empty() {
+            end: if size_of::<T>() == 0 {
+                ((slice.as_ptr() as usize) + slice.len()) as *const _
+            } else if slice.is_empty() {
                 slice.as_ptr()
             } else {
                 unsafe { slice.as_ptr().add(slice.len()) }
@@ -201,18 +211,25 @@ impl<T> Iterator for RawValIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {
         if self.start == self.end {
-            return None;
-        }
-
-        unsafe {
-            let result = ptr::read(self.start);
-            self.start = self.start.offset(1);
-            Some(result)
+            None
+        } else {
+            unsafe {
+                if size_of::<T>() == 0 {
+                    self.start = (self.start as usize + 1) as *const _;
+                    Some(ptr::read(NonNull::<T>::dangling().as_ptr()))
+                } else {
+                    let old_ptr = self.start;
+                    self.start = self.start.offset(1);
+                    Some(ptr::read(old_ptr))
+                }
+            }
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = (self.end as usize - self.start as usize) / size_of::<T>();
+        let elem_size = size_of::<T>();
+        let len =
+            (self.end as usize - self.start as usize) / if elem_size == 0 { 1 } else { elem_size };
         (len, Some(len))
     }
 }
@@ -220,12 +237,17 @@ impl<T> Iterator for RawValIter<T> {
 impl<T> DoubleEndedIterator for RawValIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.start == self.end {
-            return None;
-        }
-
-        unsafe {
-            self.end = self.end.offset(-1);
-            Some(ptr::read(self.end))
+            None
+        } else {
+            unsafe {
+                if size_of::<T>() == 0 {
+                    self.end = (self.end as usize - 1) as *const _;
+                    Some(ptr::read(NonNull::<T>::dangling().as_ptr()))
+                } else {
+                    self.end = self.end.offset(-1);
+                    Some(ptr::read(self.end))
+                }
+            }
         }
     }
 }
