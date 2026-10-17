@@ -9,9 +9,9 @@ Logic: Stage 1 gets you your first job, Stage 2 gives you depth and access to to
 ## Stage 0. Foundations (2–4 months)
 
 ### Advanced Rust
-- [ ] Lifetimes in complex cases, HRTB
-- [ ] Smart pointers: `Box`, `Rc`, `Arc`, `RefCell`, `Cow`
-- [ ] Unsafe Rust: raw pointers, FFI, invariants — *Rustonomicon*
+- [x] Lifetimes in complex cases, HRTB
+- [x] Smart pointers: `Box`, `Rc`, `Arc`, `RefCell`, `Cow`
+- [x] Unsafe Rust: raw pointers, FFI, invariants — *Rustonomicon*
 - [ ] Concurrency: `Send`/`Sync`, atomics, memory ordering — *Rust Atomics and Locks* (Mara Bos, free online)
 - [ ] Async in depth: how Future works, pin, executors — tokio mini-redis tutorial
 
