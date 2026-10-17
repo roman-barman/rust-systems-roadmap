@@ -33,6 +33,22 @@ impl<T> Deref for Arc<T> {
     }
 }
 
+impl<T> Clone for Arc<T> {
+    fn clone(&self) -> Self {
+        let inner = unsafe { self.ptr.as_ref() };
+        let old_rc = inner.rc.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        if old_rc >= isize::MAX as usize {
+            std::process::abort();
+        }
+
+        Self {
+            ptr: self.ptr,
+            phantom: PhantomData,
+        }
+    }
+}
+
 pub struct ArcInner<T> {
     rc: AtomicUsize,
     data: T,
