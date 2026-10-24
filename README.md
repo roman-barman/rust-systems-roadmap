@@ -13,7 +13,7 @@ Logic: Stage 1 gets you your first job, Stage 2 gives you depth and access to to
 - [x] Smart pointers: `Box`, `Rc`, `Arc`, `RefCell`, `Cow`
 - [x] Unsafe Rust: raw pointers, FFI, invariants — *Rustonomicon*
 - [ ] Concurrency: `Send`/`Sync`, atomics, memory ordering — *Rust Atomics and Locks* (Mara Bos, free online)
-- [ ] Custom async runtime
+- [ ] Project: custom async runtime
 
 ### C and low-level
 - [ ] C: K&R or *Modern C* (1–2 months)
