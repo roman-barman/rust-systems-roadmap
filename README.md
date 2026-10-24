@@ -16,7 +16,8 @@ Logic: Stage 1 gets you your first job, Stage 2 gives you depth and access to to
 - [ ] Project: custom async runtime
 
 ### C and low-level
-- [ ] C: K&R or *Modern C* (1–2 months)
+- [ ] Coursera: C Programming with Linux
+- [ ] *Modern C* (1–2 months)
 - [ ] Project: your own malloc
 - [ ] Project: a simple shell
 - [ ] CS:APP — chapters on memory, linking, assembly
