@@ -1,49 +1,42 @@
 use std::cell::UnsafeCell;
 use std::mem::MaybeUninit;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-pub struct Channel<T> {
+pub struct Sender<T> {
+    channel: Arc<Channel<T>>,
+}
+
+impl<T> Sender<T> {
+    pub fn send(self, message: T) {
+        unsafe { (*self.channel.message.get()).write(message) };
+        self.channel.ready.store(true, Ordering::Release);
+    }
+}
+
+pub struct Receiver<T> {
+    channel: Arc<Channel<T>>,
+}
+
+impl<T> Receiver<T> {
+    pub fn is_ready(&self) -> bool {
+        self.channel.ready.load(Ordering::Relaxed)
+    }
+
+    pub fn receive(self) -> T {
+        if !self.channel.ready.swap(false, Ordering::Acquire) {
+            panic!("no message available!");
+        }
+        unsafe { (*self.channel.message.get()).assume_init_read() }
+    }
+}
+
+struct Channel<T> {
     message: UnsafeCell<MaybeUninit<T>>,
     ready: AtomicBool,
-    in_use: AtomicBool,
 }
 
 unsafe impl<T> Sync for Channel<T> where T: Send {}
-
-impl<T> Channel<T> {
-    pub fn new() -> Self {
-        Self {
-            message: UnsafeCell::new(MaybeUninit::uninit()),
-            ready: AtomicBool::new(false),
-            in_use: AtomicBool::new(false),
-        }
-    }
-
-    /// Panics when trying to send more than one message.
-    pub fn send(&self, message: T) {
-        if self.in_use.swap(true, Ordering::Relaxed) {
-            panic!("can't send more than one message!");
-        }
-        unsafe { (*self.message.get()).write(message) };
-        self.ready.store(true, Ordering::Release);
-    }
-
-    pub fn is_ready(&self) -> bool {
-        self.ready.load(Ordering::Relaxed)
-    }
-
-    /// Panics if no message is available yet,
-    /// or if the message was already consumed.
-    ///
-    /// Tip: Use `is_ready` to check first.
-    pub fn receive(&self) -> T {
-        if !self.ready.swap(false, Ordering::Acquire) {
-            panic!("no message available!");
-        }
-
-        unsafe { (*self.message.get()).assume_init_read() }
-    }
-}
 
 impl<T> Drop for Channel<T> {
     fn drop(&mut self) {
@@ -53,24 +46,31 @@ impl<T> Drop for Channel<T> {
     }
 }
 
+pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
+    let a = Arc::new(Channel {
+        message: UnsafeCell::new(MaybeUninit::uninit()),
+        ready: AtomicBool::new(false),
+    });
+    (Sender { channel: a.clone() }, Receiver { channel: a })
+}
 #[cfg(test)]
 mod tests {
-    use crate::Channel;
+    use crate::channel;
     use std::thread;
 
     #[test]
     fn test_one_shot_channel() {
-        let channel = Channel::new();
-        let t = thread::current();
         thread::scope(|s| {
-            s.spawn(|| {
-                channel.send("hello world!");
+            let (sender, receiver) = channel();
+            let t = thread::current();
+            s.spawn(move || {
+                sender.send("hello world!");
                 t.unpark();
             });
-            while !channel.is_ready() {
+            while !receiver.is_ready() {
                 thread::park();
             }
-            assert_eq!(channel.receive(), "hello world!");
+            assert_eq!(receiver.receive(), "hello world!");
         });
     }
 }
